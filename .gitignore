@@ -1,0 +1,7 @@
+*.hex
+*.o
+*.elf
+*.lst
+*.d
+*.pdf
+README.md
