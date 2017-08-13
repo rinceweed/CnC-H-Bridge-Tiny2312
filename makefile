@@ -29,7 +29,7 @@
 
 PROJECT_NAME = GBRLstepper
 DEVICE     = attiny2313
-CLOCK      = 4000000
+CLOCK      = 8000000
 PROG_PORT  = com4
 #PROGRAMMER = -c stk500v2 -y -P /dev/ttyS0
 PROGRAMMER = -c stk500v2 -y -P $(PROG_PORT)
@@ -42,7 +42,7 @@ OBJECTS    =	./bord/Bord.o \
 #FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 #FUSES      = -U lfuse:w:0xef:m -U hfuse:w:0xd1:m 
 #FUSES      = -U lfuse:w:0xef:m -U hfuse:w:0x91:m 
-FUSES      = -U lfuse:w:0xed:m -U hfuse:w:0xd9:m 
+FUSES      = -U lfuse:w:0xe4:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 ###############################################################
 # Compiler flag to set the C Standard level.
