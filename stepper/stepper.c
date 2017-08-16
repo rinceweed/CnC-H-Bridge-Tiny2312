@@ -36,32 +36,68 @@
 /*--[ Data ]---------------------------------------------------------------------------------------------------------------------*/
 
 /*--[ Prototypes ]---------------------------------------------------------------------------------------------------------------*/
-static void step(enum PortLowHigh H, uint8_t step, uint8_t dir);
+void step(enum PortLowHigh H, uint8_t step, uint8_t dir);
 
 /*==[ PUBLIC FUNCTIONS ]=========================================================================================================*/
 /*--[ Function ]-----------------------------------------------------------------------------------------------------------------*/
 void Stepper_Initialisation(void)
 {
-  HBridgeBiPolar_new();
+  sbi(CONTROL_PORT, CONTROL_OUT_LED); 
+
   cli();
+  HBridgeBiPolar_new();
+  MCUCR = (Isc0mask|Isc1mask);    //Trigger on any edge
   GIMSK = (Int0mask|Int1mask);    // Enable INTx
-  MCUCR = (Isc0mask|Isc1mask); //Trigger on any edge
+
   //Clear any pending interrupts, only start using from here on really
   EIFR  = ((1<<INTF0)|(1<<INTF1));
   sei();        //Enable Global Interrupt
+
+  cbi(CONTROL_PORT, CONTROL_OUT_LED); 
 }
 
 /*==[ INTERRUPT FUNCTIONS ]===========================================================================================================*/
 //Take any edge trigger and step or not
-SIGNAL(INT0_vect)
+ISR(INT0_vect)
 {
-  step(PortHIGH, STEP_X, DIR_X);
+//  step(PortHIGH, CONTROL_IN_STEP_H, CONTROL_IN_STEP_DIR_H);
+  uint8_t control = CONTROL_PIN;
+  if (((control >> CONTROL_IN_STEP_H) & 0x01) == MOVE_STEP)
+  {
+    if (((control >> CONTROL_IN_STEP_DIR_H) & 0x01) == DIR_FWD)
+    {
+      HBridgeBiPolar_step_forward(PortHIGH);
+    }
+    else
+    {
+      HBridgeBiPolar_step_backward(PortHIGH);
+    }
+  }
+  else
+  {
+    HBridgeBiPolar_stop(PortHIGH);
+  }
 }
 
 //Take any edge trigger and step or not
-SIGNAL(INT1_vect)
+ISR(INT1_vect)
 {
-  step(PortLOW, STEP_X, DIR_X);
+  uint8_t control = CONTROL_PIN;
+  if (((control >> CONTROL_IN_STEP_L) & 0x01) == MOVE_STEP)
+  {
+    if (((control >> CONTROL_IN_STEP_DIR_L) & 0x01) == DIR_FWD)
+    {
+      HBridgeBiPolar_step_forward(PortLOW);
+    }
+    else
+    {
+      HBridgeBiPolar_step_backward(PortLOW);
+    }
+  }
+  else
+  {
+    HBridgeBiPolar_stop(PortLOW);
+  }
 }
 /*==[ PRIVATE FUNCTIONS ]========================================================================================================*/
 
@@ -69,11 +105,12 @@ SIGNAL(INT1_vect)
 //On each timer tick each stepper is evaluated if it need to step in a direction
 //When none is stepped it means the step sequence is completed, the timer is stopped and the end is indicated to the
 //cyclic handler to provide new steps (if there is something in the q)
-static void step(enum PortLowHigh H, uint8_t step, uint8_t dir)
+void step(enum PortLowHigh H, uint8_t step, uint8_t dir)
 {
-  if (((STEP_PIN >> step) & 0x01) == MOVE_STEP)
+/*  uint8_t control = CONTROL_PIN;
+  if (((control >> step) & 0x01) == MOVE_STEP)
   {
-    if (((STEP_PIN >> dir) & 0x01) == DIR_FWD)
+    if (((control >> dir) & 0x01) == DIR_FWD)
     {
       HBridgeBiPolar_step_forward(H);
     }
@@ -84,8 +121,9 @@ static void step(enum PortLowHigh H, uint8_t step, uint8_t dir)
   }
   else
   {
-    HBridgeBiPolar_stop(H);;
+    HBridgeBiPolar_stop(H);
   }
+  */
   return;
 }
 
