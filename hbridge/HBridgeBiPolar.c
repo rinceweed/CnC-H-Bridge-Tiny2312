@@ -85,7 +85,7 @@ void HBridgeBiPolar_step_backward(enum PortLowHigh H)
   (Hbridge_StepIdx[H])--;
   if (Hbridge_StepIdx[H] < 0)
   {
-    Hbridge_StepIdx[H]= (MAX_StepSIGNLE - 1);
+    Hbridge_StepIdx[H] = (MAX_StepSIGNLE - 1);
   }
   uint8_t mask = pgm_read_byte(&(HiLoMask[H]));
   uint8_t hbridge_port = (Hbridge_Port_Value & mask);

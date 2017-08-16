@@ -38,6 +38,35 @@
 /*--[ Prototypes ]---------------------------------------------------------------------------------------------------------------*/
 void step(enum PortLowHigh H, uint8_t step, uint8_t dir);
 
+
+/*--[ Literals ]-----------------------------------------------------------------------------------------------------------------*/
+#define MAX_StepSIGNLE                    (4)
+
+/*--[ Constants ]----------------------------------------------------------------------------------------------------------------*/
+uint8_t NormalStepSteps[MAX_PortLowHigh][MAX_StepSIGNLE] PROGMEM  =
+{
+  { 0x0A, 0x06, 0x05, 0x09 },
+  { 0xA0, 0x60, 0x50, 0x90 }
+};
+
+uint8_t HiLoMask[MAX_PortLowHigh] PROGMEM  =
+{
+  0xF0, 0x0F
+};
+
+uint8_t HiLoEnable[MAX_PortLowHigh] PROGMEM  =
+{
+  CONTROL_OUT_HBRIDGE_ENABLE_L, CONTROL_OUT_HBRIDGE_ENABLE_H
+};
+/*--[ Prototypes ]---------------------------------------------------------------------------------------------------------------*/
+static void stepH(enum PortLowHigh H);
+
+/*--[ Data ]---------------------------------------------------------------------------------------------------------------------*/
+uint8_t Hbridge_StepIdx[MAX_PortLowHigh]={0,0};
+uint8_t Hbridge_Port_Value =0;
+
+
+
 /*==[ PUBLIC FUNCTIONS ]=========================================================================================================*/
 /*--[ Function ]-----------------------------------------------------------------------------------------------------------------*/
 void Stepper_Initialisation(void)
@@ -45,7 +74,10 @@ void Stepper_Initialisation(void)
   sbi(CONTROL_PORT, CONTROL_OUT_LED); 
 
   cli();
-  HBridgeBiPolar_new();
+  Hbridge_StepIdx[PortLOW] = 0;
+  Hbridge_StepIdx[PortHIGH] = 0;
+  HBRIDGE_PORT = (pgm_read_byte(&(NormalStepSteps[PortLOW][0])) | pgm_read_byte(&(NormalStepSteps[PortHIGH][0])));
+
   MCUCR = (Isc0mask|Isc1mask);    //Trigger on any edge
   GIMSK = (Int0mask|Int1mask);    // Enable INTx
 
@@ -60,22 +92,37 @@ void Stepper_Initialisation(void)
 //Take any edge trigger and step or not
 ISR(INT0_vect)
 {
-//  step(PortHIGH, CONTROL_IN_STEP_H, CONTROL_IN_STEP_DIR_H);
   uint8_t control = CONTROL_PIN;
   if (((control >> CONTROL_IN_STEP_H) & 0x01) == MOVE_STEP)
   {
     if (((control >> CONTROL_IN_STEP_DIR_H) & 0x01) == DIR_FWD)
     {
-      HBridgeBiPolar_step_forward(PortHIGH);
+      (Hbridge_StepIdx[PortHIGH])++;
+      if (Hbridge_StepIdx[PortHIGH] >= MAX_StepSIGNLE)
+      {
+       Hbridge_StepIdx[PortHIGH] = 0;
+      }
     }
     else
     {
-      HBridgeBiPolar_step_backward(PortHIGH);
+      (Hbridge_StepIdx[PortHIGH])--;
+      if (Hbridge_StepIdx[PortHIGH] < 0)
+      {
+        Hbridge_StepIdx[PortHIGH] = (MAX_StepSIGNLE - 1);
+      }
     }
+
+    uint8_t mask = pgm_read_byte(&(HiLoMask[PortHIGH]));
+    uint8_t hbridge_port = (Hbridge_Port_Value & mask);
+    uint8_t step_idx = Hbridge_StepIdx[PortHIGH];
+    Hbridge_Port_Value = (hbridge_port | pgm_read_byte(&(NormalStepSteps[PortHIGH][step_idx])));
+    HBRIDGE_PORT = Hbridge_Port_Value;
+
+    sbi(CONTROL_PORT, HiLoEnable[PortHIGH]); 
   }
   else
   {
-    HBridgeBiPolar_stop(PortHIGH);
+    cbi(CONTROL_PORT, HiLoEnable[PortHIGH]); 
   }
 }
 
@@ -87,16 +134,32 @@ ISR(INT1_vect)
   {
     if (((control >> CONTROL_IN_STEP_DIR_L) & 0x01) == DIR_FWD)
     {
-      HBridgeBiPolar_step_forward(PortLOW);
+      (Hbridge_StepIdx[PortLOW])++;
+      if (Hbridge_StepIdx[PortLOW] >= MAX_StepSIGNLE)
+      {
+       Hbridge_StepIdx[PortLOW] = 0;
+      }
     }
     else
     {
-      HBridgeBiPolar_step_backward(PortLOW);
+      (Hbridge_StepIdx[PortLOW])--;
+      if (Hbridge_StepIdx[PortLOW] < 0)
+      {
+        Hbridge_StepIdx[PortLOW] = (MAX_StepSIGNLE - 1);
+      }
     }
+
+    uint8_t mask = pgm_read_byte(&(HiLoMask[PortLOW]));
+    uint8_t hbridge_port = (Hbridge_Port_Value & mask);
+    uint8_t step_idx = Hbridge_StepIdx[PortLOW];
+    Hbridge_Port_Value = (hbridge_port | pgm_read_byte(&(NormalStepSteps[PortLOW][step_idx])));
+    HBRIDGE_PORT = Hbridge_Port_Value;
+
+    sbi(CONTROL_PORT, HiLoEnable[PortLOW]); 
   }
   else
   {
-    HBridgeBiPolar_stop(PortLOW);
+    cbi(CONTROL_PORT, HiLoEnable[PortLOW]); 
   }
 }
 /*==[ PRIVATE FUNCTIONS ]========================================================================================================*/

@@ -34,9 +34,11 @@ PROG_PORT  = com6
 #PROGRAMMER = -c stk500v2 -y -P /dev/ttyS0
 PROGRAMMER = -c stk500pp -y -P $(PROG_PORT)
 OBJECTS    =	./bord/Bord.o \
-							./hbridge/HBridgeBiPolar.o \
 							./stepper/stepper.o \
 							main.o
+
+#							./hbridge/HBridgeBiPolar.o \
+
 ###############################################################
 #FUSES      = -U lfuse:w:0xe4:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 FUSES      = -U lfuse:w:0x64:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
