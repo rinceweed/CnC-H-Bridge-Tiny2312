@@ -40,8 +40,8 @@ OBJECTS    =	./bord/Bord.o \
 #							./hbridge/HBridgeBiPolar.o \
 
 ###############################################################
-#FUSES      = -U lfuse:w:0xe4:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
-FUSES      = -U lfuse:w:0x64:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
+#default FUSES      = -U lfuse:w:0x64:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
+FUSES      = -U lfuse:w:0xeb:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 ###############################################################
 # Compiler flag to set the C Standard level.
