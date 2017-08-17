@@ -62,8 +62,8 @@ uint8_t HiLoEnable[MAX_PortLowHigh] PROGMEM  =
 static void stepH(enum PortLowHigh H);
 
 /*--[ Data ]---------------------------------------------------------------------------------------------------------------------*/
-uint8_t Hbridge_StepIdx[MAX_PortLowHigh]={0,0};
-uint8_t Hbridge_Port_Value =0;
+volatile int8_t Hbridge_StepIdx[MAX_PortLowHigh];
+volatile uint8_t Hbridge_Port_Value;
 
 
 
@@ -76,7 +76,8 @@ void Stepper_Initialisation(void)
   cli();
   Hbridge_StepIdx[PortLOW] = 0;
   Hbridge_StepIdx[PortHIGH] = 0;
-  HBRIDGE_PORT = (pgm_read_byte(&(NormalStepSteps[PortLOW][0])) | pgm_read_byte(&(NormalStepSteps[PortHIGH][0])));
+  Hbridge_Port_Value = (pgm_read_byte(&(NormalStepSteps[PortLOW][0])) | pgm_read_byte(&(NormalStepSteps[PortHIGH][0])));
+  HBRIDGE_PORT = Hbridge_Port_Value;
 
   MCUCR = (Isc0mask|Isc1mask);    //Trigger on any edge
   GIMSK = (Int0mask|Int1mask);    // Enable INTx
