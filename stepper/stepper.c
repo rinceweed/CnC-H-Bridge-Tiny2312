@@ -14,7 +14,6 @@
 #include <avr/pgmspace.h>
 #include "../TDefinitions.h"
 #include "../bord/Bord.h"
-#include "../hbridge/HBridgeBiPolar.h"
 #include "stepper.h"
 
 /*--[ Literals ]-----------------------------------------------------------------------------------------------------------------*/
@@ -29,39 +28,87 @@
 #define  Int1mask (1 << INT1)
 #define  Isc1mask (1 << ISC10) //Any edge
 
+/*--[ Literals ]-----------------------------------------------------------------------------------------------------------------*/
+#define NUM_HBRIDGES_BIPOLAR            (2)
+
 /*--[ Types ]--------------------------------------------------------------------------------------------------------------------*/
+enum PortLowHigh
+{
+	PortLOW = 0,
+	PortHIGH,
+	MAX_PortLowHigh
+}; 
 
 /*--[ Constants ]----------------------------------------------------------------------------------------------------------------*/
 
 /*--[ Data ]---------------------------------------------------------------------------------------------------------------------*/
 
 /*--[ Prototypes ]---------------------------------------------------------------------------------------------------------------*/
-static void step(enum PortLowHigh H, uint8_t step, uint8_t dir);
+//void step(enum PortLowHigh H, uint8_t step, uint8_t dir);
+
+
+/*--[ Literals ]-----------------------------------------------------------------------------------------------------------------*/
+#define MAX_StepSIGNLE                    (4)
+
+/*--[ Constants ]----------------------------------------------------------------------------------------------------------------*/
+uint8_t NormalStepSteps[MAX_PortLowHigh][MAX_StepSIGNLE] PROGMEM  =
+{
+  { 0x0A, 0x06, 0x05, 0x09 },
+  { 0xA0, 0x60, 0x50, 0x90 }
+};
+
+uint8_t HiLoMask[MAX_PortLowHigh] PROGMEM  =
+{
+  0xF0, 0x0F
+};
+
+uint8_t HiLoEnable[MAX_PortLowHigh] PROGMEM  =
+{
+  CONTROL_OUT_HBRIDGE_ENABLE_L, CONTROL_OUT_HBRIDGE_ENABLE_H
+};
+/*--[ Prototypes ]---------------------------------------------------------------------------------------------------------------*/
+
+static void step(enum PortLowHigh port);
+
+/*--[ Data ]---------------------------------------------------------------------------------------------------------------------*/
+volatile int8_t Hbridge_StepIdx[MAX_PortLowHigh];
+volatile uint8_t Hbridge_Port_Value;
+
+
 
 /*==[ PUBLIC FUNCTIONS ]=========================================================================================================*/
 /*--[ Function ]-----------------------------------------------------------------------------------------------------------------*/
 void Stepper_Initialisation(void)
 {
-  HBridgeBiPolar_new();
+  sbi(CONTROL_PORT, CONTROL_OUT_LED); 
+
   cli();
+  Hbridge_StepIdx[PortLOW] = 0;
+  Hbridge_StepIdx[PortHIGH] = 0;
+  Hbridge_Port_Value = (pgm_read_byte(&(NormalStepSteps[PortLOW][0])) | pgm_read_byte(&(NormalStepSteps[PortHIGH][0])));
+  HBRIDGE_PORT = Hbridge_Port_Value;
+
+  MCUCR = (Isc0mask|Isc1mask);    //Trigger on any edge
   GIMSK = (Int0mask|Int1mask);    // Enable INTx
-  MCUCR = (Isc0mask|Isc1mask); //Trigger on any edge
+
   //Clear any pending interrupts, only start using from here on really
   EIFR  = ((1<<INTF0)|(1<<INTF1));
   sei();        //Enable Global Interrupt
+
+  cbi(CONTROL_PORT, CONTROL_OUT_LED); 
 }
 
 /*==[ INTERRUPT FUNCTIONS ]===========================================================================================================*/
 //Take any edge trigger and step or not
-SIGNAL(INT0_vect)
+ISR(INT0_vect)
 {
-  step(PortHIGH, STEP_X, DIR_X);
+  step(PortHIGH);
 }
 
 //Take any edge trigger and step or not
-SIGNAL(INT1_vect)
+ISR(INT1_vect)
 {
-  step(PortLOW, STEP_X, DIR_X);
+  step(PortLOW);
 }
 /*==[ PRIVATE FUNCTIONS ]========================================================================================================*/
 
@@ -69,22 +116,39 @@ SIGNAL(INT1_vect)
 //On each timer tick each stepper is evaluated if it need to step in a direction
 //When none is stepped it means the step sequence is completed, the timer is stopped and the end is indicated to the
 //cyclic handler to provide new steps (if there is something in the q)
-static void step(enum PortLowHigh H, uint8_t step, uint8_t dir)
+void step(enum PortLowHigh port)
 {
-  if (((STEP_PIN >> step) & 0x01) == MOVE_STEP)
+  uint8_t control = CONTROL_PIN;
+  if (((control >> CONTROL_IN_STEP_L) & 0x01) == MOVE_STEP)
   {
-    if (((STEP_PIN >> dir) & 0x01) == DIR_FWD)
+    if (((control >> CONTROL_IN_STEP_DIR_L) & 0x01) == DIR_FWD)
     {
-      HBridgeBiPolar_step_forward(H);
+      (Hbridge_StepIdx[port])++;
+      if (Hbridge_StepIdx[port] >= MAX_StepSIGNLE)
+      {
+       Hbridge_StepIdx[port] = 0;
+      }
     }
     else
     {
-      HBridgeBiPolar_step_backward(H);
+      (Hbridge_StepIdx[port])--;
+      if (Hbridge_StepIdx[port] < 0)
+      {
+        Hbridge_StepIdx[port] = (MAX_StepSIGNLE - 1);
+      }
     }
+
+    uint8_t mask = pgm_read_byte(&(HiLoMask[port]));
+    uint8_t hbridge_port = (Hbridge_Port_Value & mask);
+    uint8_t step_idx = Hbridge_StepIdx[port];
+    Hbridge_Port_Value = (hbridge_port | pgm_read_byte(&(NormalStepSteps[port][step_idx])));
+    HBRIDGE_PORT = Hbridge_Port_Value;
+
+    sbi(CONTROL_PORT, HiLoEnable[port]); 
   }
   else
   {
-    HBridgeBiPolar_stop(H);;
+    cbi(CONTROL_PORT, HiLoEnable[port]); 
   }
   return;
 }

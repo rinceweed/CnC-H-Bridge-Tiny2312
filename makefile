@@ -29,20 +29,19 @@
 
 PROJECT_NAME = GBRLstepper
 DEVICE     = attiny2313
-CLOCK      = 4000000
-PROG_PORT  = com4
+CLOCK      = 8000000
+PROG_PORT  = com6
 #PROGRAMMER = -c stk500v2 -y -P /dev/ttyS0
-PROGRAMMER = -c stk500v2 -y -P $(PROG_PORT)
+PROGRAMMER = -c stk500pp -y -P $(PROG_PORT)
 OBJECTS    =	./bord/Bord.o \
-							./hbridge/HBridgeBiPolar.o \
 							./stepper/stepper.o \
 							main.o
+
+#							./hbridge/HBridgeBiPolar.o \
+
 ###############################################################
-# FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
-#FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
-#FUSES      = -U lfuse:w:0xef:m -U hfuse:w:0xd1:m 
-#FUSES      = -U lfuse:w:0xef:m -U hfuse:w:0x91:m 
-FUSES      = -U lfuse:w:0xed:m -U hfuse:w:0xd9:m 
+#default FUSES      = -U lfuse:w:0x64:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
+FUSES      = -U lfuse:w:0xeb:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 ###############################################################
 # Compiler flag to set the C Standard level.
@@ -79,7 +78,7 @@ CFLAGS += $(CSTANDARD)
 # Tune the lines below only if you know what you are doing:
 
 #AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F -vvvv
-AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -F -i 10000
+AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -F -i 1000
 COMPILE = avr-gcc -std=gnu99 -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. 
 
 # symbolic targets:
