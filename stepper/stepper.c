@@ -132,6 +132,7 @@ void Stepper_Handler(enum PortLowHigh port)
     default:
     {
       cbi(CONTROL_PORT, enablePin);
+      PortStepState[port] = WaitForHigh;
     }
     break;
   }
