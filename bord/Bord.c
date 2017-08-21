@@ -39,7 +39,7 @@ void Bord_Init(void)
   HBRIDGE_PORT = 0x00;//Hbridge control moet laag wees met begin
 
   CONTROL_DDR  = (CONTROL_OUT_MASK)&(~CONTROL_IN_MASK); // inputs want it low
-  CONTROL_PORT = (~CONTROL_OUT_MASK)&(CONTROL_IN_MASK); //Enable pull-ups for input only
+  CONTROL_PORT = (~CONTROL_OUT_MASK)&(CONTROL_IN_MASK);
 
   return;
 }

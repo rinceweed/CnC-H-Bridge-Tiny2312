@@ -32,7 +32,8 @@ DEVICE     = attiny2313
 CLOCK      = 8000000
 PROG_PORT  = com6
 #PROGRAMMER = -c stk500v2 -y -P /dev/ttyS0
-PROGRAMMER = -c stk500pp -y -P $(PROG_PORT)
+#PROGRAMMER = -c stk500pp -y -P $(PROG_PORT)
+PROGRAMMER = -c stk500v2 -y -P $(PROG_PORT) -B 3
 OBJECTS    =	./bord/Bord.o \
 							./stepper/stepper.o \
 							main.o
@@ -41,7 +42,7 @@ OBJECTS    =	./bord/Bord.o \
 
 ###############################################################
 #default FUSES      = -U lfuse:w:0x64:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
-FUSES      = -U lfuse:w:0xeb:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
+FUSES      = -U lfuse:w:0xe4:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 ###############################################################
 # Compiler flag to set the C Standard level.

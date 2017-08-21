@@ -68,7 +68,7 @@ uint8_t HiLoEnable[MAX_PortLowHigh] PROGMEM  =
 };
 /*--[ Prototypes ]---------------------------------------------------------------------------------------------------------------*/
 
-static void step(enum PortLowHigh port);
+static void step(enum PortLowHigh port, uint8_t L_H);
 
 /*--[ Data ]---------------------------------------------------------------------------------------------------------------------*/
 volatile int8_t Hbridge_StepIdx[MAX_PortLowHigh];
@@ -80,7 +80,7 @@ volatile uint8_t Hbridge_Port_Value;
 /*--[ Function ]-----------------------------------------------------------------------------------------------------------------*/
 void Stepper_Initialisation(void)
 {
-  sbi(CONTROL_PORT, CONTROL_OUT_LED); 
+  sbi(CONTROL_PORT, CONTROL_OUT_LED);
 
   cli();
   Hbridge_StepIdx[PortLOW] = 0;
@@ -88,40 +88,37 @@ void Stepper_Initialisation(void)
   Hbridge_Port_Value = (pgm_read_byte(&(NormalStepSteps[PortLOW][0])) | pgm_read_byte(&(NormalStepSteps[PortHIGH][0])));
   HBRIDGE_PORT = Hbridge_Port_Value;
 
-  MCUCR = (Isc0mask|Isc1mask);    //Trigger on any edge
+  MCUCR = (PUD|Isc0mask|Isc1mask);    //Trigger on any edge
   GIMSK = (Int0mask|Int1mask);    // Enable INTx
 
   //Clear any pending interrupts, only start using from here on really
   EIFR  = ((1<<INTF0)|(1<<INTF1));
   sei();        //Enable Global Interrupt
 
-  cbi(CONTROL_PORT, CONTROL_OUT_LED); 
+  cbi(CONTROL_PORT, CONTROL_OUT_LED);
 }
 
 /*==[ INTERRUPT FUNCTIONS ]===========================================================================================================*/
 //Take any edge trigger and step or not
 ISR(INT0_vect)
 {
-  step(PortHIGH);
+  step(PortHIGH, CONTROL_IN_STEP_H);
 }
 
 //Take any edge trigger and step or not
 ISR(INT1_vect)
 {
-  step(PortLOW);
+  step(PortLOW, CONTROL_IN_STEP_L);
 }
 /*==[ PRIVATE FUNCTIONS ]========================================================================================================*/
 
 /*--[ Function ]-----------------------------------------------------------------------------------------------------------------*/
-//On each timer tick each stepper is evaluated if it need to step in a direction
-//When none is stepped it means the step sequence is completed, the timer is stopped and the end is indicated to the
-//cyclic handler to provide new steps (if there is something in the q)
-void step(enum PortLowHigh port)
+static void step(enum PortLowHigh port, uint8_t L_H)
 {
   uint8_t control = CONTROL_PIN;
-  if (((control >> CONTROL_IN_STEP_L) & 0x01) == MOVE_STEP)
+  if (((control >> L_H) & 0x01) == MOVE_STEP)
   {
-    if (((control >> CONTROL_IN_STEP_DIR_L) & 0x01) == DIR_FWD)
+    if (((control >> L_H) & 0x01) == DIR_FWD)
     {
       (Hbridge_StepIdx[port])++;
       if (Hbridge_StepIdx[port] >= MAX_StepSIGNLE)
@@ -144,11 +141,11 @@ void step(enum PortLowHigh port)
     Hbridge_Port_Value = (hbridge_port | pgm_read_byte(&(NormalStepSteps[port][step_idx])));
     HBRIDGE_PORT = Hbridge_Port_Value;
 
-    sbi(CONTROL_PORT, HiLoEnable[port]); 
+    sbi(CONTROL_PORT, pgm_read_byte(&(HiLoEnable[port])));
   }
   else
   {
-    cbi(CONTROL_PORT, HiLoEnable[port]); 
+    cbi(CONTROL_PORT, pgm_read_byte(&(HiLoEnable[port])));
   }
   return;
 }
